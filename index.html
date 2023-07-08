@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+    <title>game of life in 3D</title>
+
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://preview.babylonjs.com/gui/babylon.gui.min.js"></script>
+
+    <style>
+        html,
+        body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="renderCanvas"></canvas>
+
+    <script>
+        let canvas = document.getElementById("renderCanvas");
+
+        let createScene = function () {
+            // https://playgameoflife.com/info
+
+            let scene = new BABYLON.Scene(engine);
+            // scene.debugLayer.show();
+            scene.clearColor = new BABYLON.Color3(0.6, 0.6, 0.6);
+            // const axes = new BABYLON.AxesViewer(scene, .25);
+
+            let camera = new BABYLON.ArcRotateCamera("camera",
+                BABYLON.Tools.ToRadians(45),
+                BABYLON.Tools.ToRadians(45),
+                100,
+                BABYLON.Vector3.Zero(), scene);
+            camera.setTarget(BABYLON.Vector3.Zero());
+            camera.attachControl(canvas, true);
+            camera.upperBetaLimit = null;
+            camera.lowerBetaLimit = null;
+
+            let lightHemi = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+            lightHemi.intensity = 0.7;
+
+            // let light1 = new BABYLON.PointLight("light1", BABYLON.Vector3.Zero(), scene);
+            // light1.diffuse = BABYLON.Color3.FromHexString("#ff0000");
+            // light1.position.set(-3, 0, 0);
+
+            // let light2 = new BABYLON.PointLight("light1", BABYLON.Vector3.Zero(), scene);
+            // light2.diffuse = BABYLON.Color3.FromHexString("#00ff00");
+            // light2.position.set(0, -3, 0);
+
+            // let light3 = new BABYLON.PointLight("light1", BABYLON.Vector3.Zero(), scene);
+            // light3.diffuse = BABYLON.Color3.FromHexString("#0000ff");
+            // light3.position.set(0, 0, 3);
+
+
+
+            let meshCell = BABYLON.MeshBuilder.CreateBox("", { size: .9 }, scene);
+            meshCell.material = new BABYLON.StandardMaterial("mat", scene);
+            meshCell.material.diffuseColor = new BABYLON.Color4(1, 0.2, 0, 1);
+            // meshCell.material.alpha = 0.8;
+            meshCell.isVisible = false;
+
+            let meshGridCell = BABYLON.MeshBuilder.CreateBox("", { size: 1 }, scene);
+            meshGridCell.material = new BABYLON.StandardMaterial("mat", scene);
+            meshGridCell.material.diffuseColor = new BABYLON.Color4(0, 0, 0, 1);
+            meshGridCell.material.alpha = 0.03;
+            meshGridCell.isVisible = false;
+
+
+            let instanceId = 0;
+            let cells = [];
+            let size = 1;
+            let max = 10;
+            for (let x = -max - 1; x <= max + 1; x++) {
+                cells[x] = [];
+                for (let y = -max - 1; y <= max + 1; y++) {
+                    cells[x][y] = [];
+                    for (let z = -max - 1; z <= max + 1; z++) {
+
+                        let mesh = meshCell.createInstance(instanceId++);
+                        mesh.position.set(x * size, y * size, z * size);
+                        // mesh.enableEdgesRendering();
+                        // mesh.edgesWidth = 1;
+                        // mesh.edgesColor = new BABYLON.Color4(0.1, 0.1, 0.1, 1);
+
+
+                        let value = 0;
+                        if (x !== -max - 1 && x !== max + 1 &&
+                            y !== -max - 1 && y !== max + 1 &&
+                            z !== -max - 1 && z !== max + 1) {
+                            value = Math.sqrt(x * x + y * y + z * z) / (2 * max);
+                            // value = Math.random();                            
+                        }
+                        else {
+                            mesh.isVisible = false;
+                        }
+
+                        cells[x][y][z] = {
+                            value: value,
+                            mesh: mesh
+                        };
+
+
+                        // let d = Math.sqrt(x * x + y * y + z * z);
+                        // if (d > max * 1.5) {
+                        //     let meshGrid = meshGridCell.createInstance(instanceId++);
+                        //     meshGrid.position.set(x * size, y * size, z * size);
+                        //     // meshGrid.enableEdgesRendering();
+                        //     // meshGrid.edgesWidth = 0.1;
+                        //     // meshGrid.edgesColor = new BABYLON.Color4(0.1, 0.1, 0.1, 1);
+                        // }
+                        // else {
+                        //     // mesh.isVisible = false;
+                        // }
+
+
+
+                    }
+                }
+            }
+
+            let render = () => {
+                for (let x = -max; x <= max; x++) {
+                    for (let y = -max; y <= max; y++) {
+                        for (let z = -max; z <= max; z++) {
+                            let cell = cells[x][y][z];
+                            cell.mesh.scaling.set(cell.value, cell.value, cell.value);
+                            // cell.mesh.material.diffuseColor.r = cell.value;
+                            // cell.mesh.scaling.set(0.5, 0.5, 0.5);
+                            // cell.mesh.rotation.set(cell.value, cell.value, cell.value);
+                            // cell.material.diffuseColor.set(cell.value, 0, 0, 1);
+                        }
+                    }
+                }
+            }
+
+            let generate = () => {
+                for (let x = -max; x <= max; x++) {
+                    for (let y = -max; y <= max; y++) {
+                        for (let z = -max; z <= max; z++) {
+                            let cell = cells[x][y][z];
+
+                            let sumNeighbors = 0;
+                            for (let i1 = -1; i1 <= 1; i1++) {
+                                for (let i2 = -1; i2 <= 1; i2++) {
+                                    for (let i3 = -1; i3 <= 1; i3++) {
+                                        if (i1 === 0 && i2 === 0 && i3 === 0) continue;
+                                        if (cells[x + i1] === undefined) continue;
+                                        if (cells[x + i1][y + i2] === undefined) continue;
+                                        let cellNeighbor = cells[x + i1][y + i2][z + i3];
+                                        if (cellNeighbor === undefined) continue;
+
+                                        if (cellNeighbor.value > 0) {
+                                            sumNeighbors++;
+                                        }
+                                    }
+                                }
+                            }
+
+                            /* Behave Default * /
+                            // Each cell with one or no neighbors dies
+                            if (cell.value > 0 && sumNeighbors <= 1) {
+                                cell.value = 0;
+                            }
+                            // Each cell with eight or more neighbors dies: overcrowed
+                            else if (cell.value > 0 && sumNeighbors >= 8) {
+                                cell.value = 0;
+                            }
+
+                            // Each cell with five or more neighbors becomes populated.
+                            else if (cell.value <= 0 && sumNeighbors >= 5) {
+                                cell.value = 1;  // new cell born                                
+                            }
+                            /* */
+
+
+                            /* Behave: relative dying */
+
+                            // Each cell with one or no neighbors dies
+                            if (cell.value > 0 && sumNeighbors <= 1) {
+                                cell.value -= 0.01;  // dying
+                            }
+                            // Each cell with eight or more neighbors dies: overcrowed
+                            else if (cell.value > 0 && sumNeighbors >= 8) {
+                                cell.value -= 0.01;  // dying
+                            }
+
+                            // Each cell with five or more neighbors becomes populated.
+                            else if (cell.value <= 0 && sumNeighbors >= 5) {
+                                cell.value = 1;  // new cell born
+                            }
+                            /* */
+
+
+                            if (cell.value < 0) {
+                                cell.value = 0;
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            let desiredFps = 10;
+            let interval = 1000 / (10 * desiredFps);
+            let lastTime = performance.now();
+            function loop() {
+                window.requestAnimationFrame(loop)
+                let currentTime = performance.now();
+                const deltaTime = currentTime - lastTime;
+                if (deltaTime > interval) {
+                    lastTime = currentTime - (deltaTime % interval);
+
+                    generate();
+                    render();
+                }
+            }
+            loop();
+
+
+            return scene;
+        };
+
+
+
+
+        let engine = new BABYLON.Engine(canvas, true, {
+            preserveDrawingBuffer: true,
+            stencil: true
+        });
+        let scene = createScene();
+
+        engine.runRenderLoop(function () {
+            if (scene) {
+                scene.render();
+            }
+        });
+
+        window.addEventListener("resize", function () {
+            engine.resize();
+        });
+    </script>
+
+</body>
+
+</html>
